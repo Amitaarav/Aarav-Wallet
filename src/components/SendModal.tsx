@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { sendSol } from "../app/solana";
 
 interface SendModalProps {
@@ -39,11 +40,15 @@ export function SendModal({ isOpen, onClose, wallet }: SendModalProps) {
         if (wallet.balance) setAmount((wallet.balance - 0.000005).toFixed(6));
     };
 
-    return (
+    return createPortal(
         <div
-            className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in"
-            onClick={(e) => e.target === e.currentTarget && onClose()}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade-in"
+            style={{ isolation: 'isolate' }}
         >
+            <div 
+                className="absolute inset-0 bg-black/70 backdrop-blur-md"
+                onClick={onClose}
+            />
             <div className="bg-[#0a0a0a] border border-white/10 rounded-[40px] w-full max-w-lg p-10 shadow-2xl relative">
 
                 {/* Header */}
@@ -136,6 +141,7 @@ export function SendModal({ isOpen, onClose, wallet }: SendModalProps) {
                     </div>
                 </form>
             </div>
-        </div>
+        </div>,
+    document.body
     );
 }
