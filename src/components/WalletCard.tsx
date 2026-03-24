@@ -7,9 +7,10 @@ interface WalletProps {
     type: "Solana" | "Ethereum";
     index: number;
     onSend?: () => void;
+    onDelete?: () => void;
 }
 
-export function WalletCard({ address, balance, usdcBalance, type, index, onSend }: WalletProps) {
+export function WalletCard({ address, balance, usdcBalance, type, index, onSend, onDelete }: WalletProps) {
     const [copied, setCopied] = useState(false);
 
     const copyToClipboard = () => {
@@ -20,7 +21,7 @@ export function WalletCard({ address, balance, usdcBalance, type, index, onSend 
 
     const isSolana = type === "Solana";
     const shortAddress = `${address.slice(0, 6)}...${address.slice(-6)}`;
-
+    
     return (
         <div
             className="group relative bg-white/[0.03] hover:bg-white/[0.05] backdrop-blur-xl border border-white/10 rounded-[32px] p-8 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-black/40 animate-fade-in"
@@ -88,6 +89,13 @@ export function WalletCard({ address, balance, usdcBalance, type, index, onSend 
                     className="flex-1 py-3.5 rounded-2xl bg-white/5 text-white/25 font-black text-xs uppercase tracking-[0.2em] border border-white/5 cursor-not-allowed"
                 >
                     Swap
+                </button>
+                <button
+                    onClick={onDelete}
+                    className="w-12 h-12 flex items-center justify-center rounded-2xl bg-red-500/10 text-red-400/40 hover:text-red-400 hover:bg-red-500/20 border border-red-500/10 transition-all active:scale-95 group/del"
+                    title="Remove Account"
+                >
+                    <span className="text-lg leading-none mt-[-2px] group-hover/del:scale-110 transition-transform">×</span>
                 </button>
             </div>
         </div>

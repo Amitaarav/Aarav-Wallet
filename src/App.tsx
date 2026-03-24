@@ -4,20 +4,51 @@ import { getSolBalance, getUSDCBalance } from "./app/solana";
 import { MnemonicSection } from "./components/MnemonicSection";
 import { WalletCard } from "./components/WalletCard";
 import { SendModal } from "./components/SendModal";
+import { ToastProvider, useToast } from "./components/Toast";
+import { Dialog } from "./components/Dialog";
+import pkg from "../package.json";
 
 export default function App() {
+  return (
+    <ToastProvider>
+      <WalletApp />
+    </ToastProvider>
+  );
+}
+
+function WalletApp() {
+  const { showToast } = useToast();
   const [mnemonic, setMnemonic] = useState("");
   const [solWallets, setSolWallets] = useState<Array<any>>([]);
   const [ethWallets, setEthWallets] = useState<Array<any>>([]);
   const [activeWallet, setActiveWallet] = useState<any>(null);
   const [isSendOpen, setIsSendOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isEraseDialogOpen, setIsEraseDialogOpen] = useState(false);
+  const [deleteContext, setDeleteContext] = useState<{ type: "Solana" | "Ethereum", index: number } | null>(null);
 
   const initWallet = () => {
     const m = generateMnemonic();
     setMnemonic(m);
     addSolWallet(m, 0);
     addEthWallet(m, 0);
+    showToast("New wallet generated!", "success");
+  };
+
+  const handleErase = () => {
+    setMnemonic("");
+    setSolWallets([]);
+    setEthWallets([]);
+    showToast("Wallet erased successfully", "info");
+  };
+
+  const deleteWallet = (type: "Solana" | "Ethereum", index: number) => {
+    if (type === "Solana") {
+      setSolWallets(prev => prev.filter((_, i) => i !== index));
+    } else {
+      setEthWallets(prev => prev.filter((_, i) => i !== index));
+    }
+    showToast(`${type} account removed`, "info");
   };
 
   const addSolWallet = async (m: string, index: number) => {
@@ -79,7 +110,7 @@ export default function App() {
                 + Ethereum
               </button>
               <button
-                onClick={() => { setMnemonic(""); setSolWallets([]); setEthWallets([]); }}
+                onClick={() => setIsEraseDialogOpen(true)}
                 className="px-5 py-3.5 text-red-400/60 hover:text-red-400 border border-red-500/10 hover:border-red-500/30 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-500/10 transition-all active:scale-95"
               >
                 Erase
@@ -121,6 +152,7 @@ export default function App() {
                   usdcBalance={w.usdcBalance}
                   index={i}
                   onSend={() => { setActiveWallet(w); setIsSendOpen(true); }}
+                  onDelete={() => setDeleteContext({ type: "Solana", index: i })}
                 />
               ))}
             </div>
@@ -144,6 +176,7 @@ export default function App() {
                   address={w.address}
                   balance={w.balance}
                   index={i}
+                  onDelete={() => setDeleteContext({ type: "Ethereum", index: i })}
                 />
               ))}
             </div>
@@ -180,9 +213,31 @@ export default function App() {
         </div>
       )}
 
-      <footer className="mt-32 pt-12 border-t border-white/5 text-center">
+      <footer className="mt-32 pt-12 border-t border-white/5 text-center flex flex-col items-center gap-4">
         <p className="text-white/20 text-sm font-bold tracking-[0.3em] uppercase">Developed by Amit</p>
+        <span className="px-3 py-1 bg-white/5 rounded-full border border-white/10 text-[10px] font-black text-white/20 tracking-widest uppercase">
+          v{pkg.version}
+        </span>
       </footer>
+
+      {/* Dialogs */}
+      <Dialog
+        isOpen={isEraseDialogOpen}
+        onClose={() => setIsEraseDialogOpen(false)}
+        onConfirm={handleErase}
+        title="Erase Wallet?"
+        description="This will permanently delete your seed phrase and all accounts from this device. Make sure you have backed up your recovery phrase."
+        confirmText="Yes, Erase Everything"
+      />
+
+      <Dialog
+        isOpen={!!deleteContext}
+        onClose={() => setDeleteContext(null)}
+        onConfirm={() => deleteContext && deleteWallet(deleteContext.type, deleteContext.index)}
+        title="Remove Account?"
+        description={`This will remove this ${deleteContext?.type} account from your view. You can always re-derive it using the same index.`}
+        confirmText="Remove Account"
+      />
     </div>
   );
 }
