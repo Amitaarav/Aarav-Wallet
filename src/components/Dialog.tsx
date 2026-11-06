@@ -1,4 +1,3 @@
-import React from "react";
 import { createPortal } from "react-dom";
 
 interface DialogProps {
@@ -14,8 +13,7 @@ interface DialogProps {
 
 /**
  * Reusable Confirmation Dialog component.
- * Rendered using a React Portal to the document body to avoid parent layout issues (like transforms).
- * Feature-rich design with glassmorphism and danger/info variants.
+ * Uses React Portal with crisp, distraction-free modal geometry and clear hierarchy.
  */
 export function Dialog({
   isOpen,
@@ -31,45 +29,44 @@ export function Dialog({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-fade-in"
-      style={{ isolation: 'isolate' }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      style={{ isolation: "isolate" }}
     >
       {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/80 backdrop-blur-xl"
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"
         onClick={onClose}
       />
-      
-      {/* Modal Container */}
-      <div className="bg-[#0a0a0a] border border-white/10 rounded-[40px] w-full max-w-md p-10 shadow-3xl relative overflow-hidden group animate-in fade-in zoom-in duration-300">
-        {/* Decorative background gradient */}
-        <div className={`absolute -top-24 -right-24 w-48 h-48 rounded-full blur-[100px] opacity-20 transition-colors duration-500 ${variant === 'danger' ? 'bg-red-500' : 'bg-blue-500'}`} />
-        
-        <div className="relative z-10">
-          <h3 className="text-3xl font-black text-white font-outfit tracking-tight mb-4">{title}</h3>
-          <p className="text-white/40 text-sm leading-relaxed mb-10 font-medium">{description}</p>
 
-          <div className="flex flex-col gap-3">
-            <button
-              onClick={() => {
-                onConfirm();
-                onClose();
-              }}
-              className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all active:scale-[0.98] ${
-                variant === "danger"
-                  ? "bg-red-500 text-white hover:bg-red-600 shadow-lg shadow-red-500/20"
-                  : "bg-white text-black hover:bg-gray-100 shadow-lg shadow-white/5"
-              }`}
-            >
-              {confirmText}
-            </button>
-            <button
-              onClick={onClose}
-              className="w-full py-4 rounded-2xl bg-white/5 text-white/40 font-black text-xs uppercase tracking-[0.2em] border border-white/5 hover:bg-white/10 hover:text-white transition-all active:scale-[0.98]"
-            >
-              {cancelText}
-            </button>
-          </div>
+      {/* Modal Container */}
+      <div className="bg-[#0c0c0c] border border-white/[0.08] rounded-2xl w-full max-w-sm p-6 relative animate-slide-up shadow-2xl">
+        <h3 className="text-xl font-bold text-white font-outfit tracking-[-0.02em] mb-2">
+          {title}
+        </h3>
+        <p className="text-white/50 text-xs leading-relaxed mb-6">
+          {description}
+        </p>
+
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={() => {
+              onConfirm();
+              onClose();
+            }}
+            className={`w-full py-3 rounded-xl font-semibold text-xs tracking-wide transition-all duration-150 active:scale-[0.98] ${
+              variant === "danger"
+                ? "bg-rose-600 text-white hover:bg-rose-500 shadow-md shadow-rose-950/40"
+                : "bg-white text-black hover:bg-white/90"
+            }`}
+          >
+            {confirmText}
+          </button>
+          <button
+            onClick={onClose}
+            className="w-full py-3 rounded-xl bg-white/[0.04] text-white/50 font-semibold text-xs tracking-wide border border-white/[0.06] hover:bg-white/[0.08] hover:text-white transition-all duration-150 active:scale-[0.98]"
+          >
+            {cancelText}
+          </button>
         </div>
       </div>
     </div>,

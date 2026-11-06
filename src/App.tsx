@@ -4,14 +4,12 @@ import { getSolBalance, getUSDCBalance } from "./app/solana";
 import { MnemonicSection } from "./components/MnemonicSection";
 import { WalletCard } from "./components/WalletCard";
 import { SendModal } from "./components/SendModal";
+import { ReceiveModal } from "./components/ReceiveModal";
+import { PrivateKeyModal } from "./components/PrivateKeyModal";
 import { ToastProvider, useToast } from "./components/Toast";
 import { Dialog } from "./components/Dialog";
 import pkg from "../package.json";
 
-/**
- * Main App entry point.
- * Wraps the entire application in a ToastProvider to enable global notifications.
- */
 export default function App() {
   return (
     <ToastProvider>
@@ -20,46 +18,48 @@ export default function App() {
   );
 }
 
-/**
- * Core Wallet Application Logic.
- * Manages mnemonic state, derived wallets for Solana and Ethereum, 
- * and handles global UI states like refreshing and erase dialogs.
- */
 function WalletApp() {
   const { showToast } = useToast();
-  
+
   // App State
   const [mnemonic, setMnemonic] = useState("");
   const [solWallets, setSolWallets] = useState<Array<any>>([]);
   const [ethWallets, setEthWallets] = useState<Array<any>>([]);
-  const [activeWallet, setActiveWallet] = useState<any>(null); // For SendModal context
-  const [isSendOpen, setIsSendOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"All" | "Solana" | "Ethereum">("All");
+
+  // Modal States
+  const [sendWallet, setSendWallet] = useState<any>(null);
+  const [receiveWallet, setReceiveWallet] = useState<any>(null);
+  const [keyWallet, setKeyWallet] = useState<any>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  
-  // UI Confirmation State
+
+  // Dialog State
   const [isEraseDialogOpen, setIsEraseDialogOpen] = useState(false);
-  const [deleteContext, setDeleteContext] = useState<{ type: "Solana" | "Ethereum", index: number } | null>(null);
+  const [deleteContext, setDeleteContext] = useState<{
+    type: "Solana" | "Ethereum";
+    index: number;
+  } | null>(null);
 
   const initWallet = () => {
     const m = generateMnemonic();
     setMnemonic(m);
     addSolWallet(m, 0);
     addEthWallet(m, 0);
-    showToast("New wallet generated!", "success");
+    showToast("New multi-chain wallet created", "success");
   };
 
   const handleErase = () => {
     setMnemonic("");
     setSolWallets([]);
     setEthWallets([]);
-    showToast("Wallet erased successfully", "info");
+    showToast("Wallet erased from device", "info");
   };
 
   const deleteWallet = (type: "Solana" | "Ethereum", index: number) => {
     if (type === "Solana") {
-      setSolWallets(prev => prev.filter((_, i) => i !== index));
+      setSolWallets((prev) => prev.filter((_, i) => i !== index));
     } else {
-      setEthWallets(prev => prev.filter((_, i) => i !== index));
+      setEthWallets((prev) => prev.filter((_, i) => i !== index));
     }
     showToast(`${type} account removed`, "info");
   };
@@ -68,193 +68,294 @@ function WalletApp() {
     const w = deriveSolanaWallet(m, index);
     const sol = await getSolBalance(w.publicKey);
     const usdc = await getUSDCBalance(w.publicKey);
-    setSolWallets(prev => [...prev, { ...w, balance: sol, usdcBalance: usdc }]);
+    setSolWallets((prev) => [...prev, { ...w, balance: sol, usdcBalance: usdc, type: "Solana" }]);
   };
 
   const addEthWallet = async (m: string, index: number) => {
     const w = deriveEthereumWallet(m, index);
-    setEthWallets(prev => [...prev, { ...w, balance: 0 }]);
+    setEthWallets((prev) => [...prev, { ...w, balance: 0, type: "Ethereum" }]);
   };
 
-  /**
-   * Refreshes balances for all Solana wallets.
-   * Fetches SOL and optional USDC balances.
-   */
   const refreshBalances = async () => {
     if (!mnemonic) return;
     setIsRefreshing(true);
-    const updatedSol = await Promise.all(solWallets.map(async (w) => {
-      const sol = await getSolBalance(w.publicKey);
-      const usdc = await getUSDCBalance(w.publicKey);
-      return { ...w, balance: sol, usdcBalance: usdc };
-    }));
+    const updatedSol = await Promise.all(
+      solWallets.map(async (w) => {
+        const sol = await getSolBalance(w.publicKey);
+        const usdc = await getUSDCBalance(w.publicKey);
+        return { ...w, balance: sol, usdcBalance: usdc };
+      })
+    );
     setSolWallets(updatedSol);
     setIsRefreshing(false);
+    showToast("Balances updated", "success");
   };
 
-  return (
-    <div className="max-w-6xl mx-auto px-6 py-12 md:py-24 animate-fade-in">
+  // Portfolio Totals
+  const totalSol = solWallets.reduce((acc, w) => acc + (w.balance || 0), 0);
+  const totalUsdc = solWallets.reduce((acc, w) => acc + (w.usdcBalance || 0), 0);
+  const totalEth = ethWallets.reduce((acc, w) => acc + (w.balance || 0), 0);
+  const totalAccounts = solWallets.length + ethWallets.length;
 
+  return (
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 md:py-16">
       {/* Header */}
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-20">
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.3em] text-white/20 font-medium font-outfit mb-2">Multi-chain</p>
-          <h1 className="text-5xl font-black tracking-tighter font-outfit text-white">
-            Aarav <span className="text-white/20">Wallet</span>
-          </h1>
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 pb-6 border-b border-white/[0.06] animate-enter">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center font-outfit font-black text-lg text-white">
+            A
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-black tracking-[-0.03em] font-outfit text-white leading-none">
+              Aarav<span className="text-white/40 ml-1.5 font-semibold">Wallet</span>
+            </h1>
+            <p className="text-[11px] text-white/35 mt-1">Multi-Chain Non-Custodial</p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
           {mnemonic ? (
             <>
               <button
                 onClick={refreshBalances}
                 disabled={isRefreshing}
-                className="px-5 py-3.5 rounded-2xl bg-white/5 border border-white/5 text-white/40 hover:text-white hover:bg-white/10 transition-all active:scale-95 disabled:opacity-40 text-xs font-black uppercase tracking-widest"
+                className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.07] text-white/60 hover:text-white hover:bg-white/[0.08] transition-all text-xs font-medium flex items-center gap-1.5 active:scale-[0.97] disabled:opacity-40"
               >
-                {isRefreshing ? "Syncing..." : "Refresh"}
+                <svg
+                  className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                </svg>
+                <span>{isRefreshing ? "Syncing…" : "Refresh"}</span>
               </button>
-              <button
-                onClick={() => addSolWallet(mnemonic, solWallets.length)}
-                className="px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-white/10 transition-all active:scale-95 text-white/60 hover:text-white"
-              >
-                + Solana
-              </button>
-              <button
-                onClick={() => addEthWallet(mnemonic, ethWallets.length)}
-                className="px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-white/10 transition-all active:scale-95 text-white/60 hover:text-white"
-              >
-                + Ethereum
-              </button>
+
               <button
                 onClick={() => setIsEraseDialogOpen(true)}
-                className="px-5 py-3.5 text-red-400/60 hover:text-red-400 border border-red-500/10 hover:border-red-500/30 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-500/10 transition-all active:scale-95"
+                className="px-3 py-1.5 rounded-lg border border-rose-500/15 hover:border-rose-500/30 text-rose-400/80 hover:text-rose-400 hover:bg-rose-500/[0.06] transition-all text-xs font-medium active:scale-[0.97]"
               >
-                Erase
+                Lock / Erase
               </button>
             </>
           ) : (
             <button
               onClick={initWallet}
-              className="px-10 py-5 bg-white text-black font-black text-sm uppercase tracking-[0.2em] rounded-3xl hover:bg-gray-100 transition-all shadow-2xl shadow-white/10 active:scale-95"
+              className="px-6 py-2.5 bg-white text-black font-semibold text-xs rounded-xl hover:bg-white/90 transition-all active:scale-[0.97] shadow-sm"
             >
-              Generate Wallet
+              Generate New Wallet
             </button>
           )}
         </div>
       </header>
 
+      {/* Portfolio Quick Overview Bar */}
+      {mnemonic && (
+        <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 mb-8 flex flex-wrap items-center justify-between gap-4 animate-enter">
+          <div className="flex items-center gap-6 flex-wrap">
+            <div>
+              <p className="text-[10px] text-white/40 uppercase tracking-wider font-semibold">Total Holdings</p>
+              <div className="flex items-baseline gap-2 mt-0.5">
+                <span className="text-xl font-black text-white font-outfit tabular-nums">
+                  {totalSol.toFixed(4)} <span className="text-xs text-violet-400 font-bold">SOL</span>
+                </span>
+                <span className="text-white/20">·</span>
+                <span className="text-xl font-black text-white font-outfit tabular-nums">
+                  {totalEth.toFixed(4)} <span className="text-xs text-sky-400 font-bold">ETH</span>
+                </span>
+                {totalUsdc > 0 && (
+                  <>
+                    <span className="text-white/20">·</span>
+                    <span className="text-sm font-bold text-emerald-400 font-outfit tabular-nums">
+                      ${totalUsdc.toFixed(2)} USDC
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="h-7 w-px bg-white/[0.06] hidden sm:block" />
+
+            <div>
+              <p className="text-[10px] text-white/40 uppercase tracking-wider font-semibold">Accounts</p>
+              <p className="text-sm font-semibold text-white/70 mt-0.5 tabular-nums">
+                {totalAccounts} active across 2 networks
+              </p>
+            </div>
+          </div>
+
+          {/* Quick Add Buttons */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => addSolWallet(mnemonic, solWallets.length)}
+              className="px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.07] rounded-lg text-xs font-semibold text-white/80 hover:text-white transition-all active:scale-[0.97]"
+            >
+              + Solana Account
+            </button>
+            <button
+              onClick={() => addEthWallet(mnemonic, ethWallets.length)}
+              className="px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.07] rounded-lg text-xs font-semibold text-white/80 hover:text-white transition-all active:scale-[0.97]"
+            >
+              + Ethereum Account
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Mnemonic Seed Phrase Section */}
       <MnemonicSection mnemonic={mnemonic} />
 
       {mnemonic && (
-        <main className="space-y-24">
-
-          {/* Solana */}
-          <section>
-            <div className="flex items-center gap-6 mb-8">
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.3em] text-white/20 font-medium font-outfit">Network</p>
-                <h2 className="text-2xl font-black text-white font-outfit tracking-tight">Solana</h2>
-              </div>
-              <div className="h-px flex-1 bg-white/600" />
-              <span className="text-white/20 font-mono text-xs">{solWallets.length} accounts</span>
+        <main className="space-y-6">
+          {/* View Filter Tabs */}
+          <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+            <div className="flex items-center gap-1.5">
+              {(["All", "Solana", "Ethereum"] as const).map((tab) => {
+                const count =
+                  tab === "All"
+                    ? totalAccounts
+                    : tab === "Solana"
+                    ? solWallets.length
+                    : ethWallets.length;
+                const isActive = activeTab === tab;
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                      isActive
+                        ? "bg-white/10 text-white border border-white/15"
+                        : "text-white/40 hover:text-white hover:bg-white/[0.04] border border-transparent"
+                    }`}
+                  >
+                    <span>{tab}</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.2 rounded-full tabular-nums ${
+                        isActive
+                          ? "bg-white/20 text-white"
+                          : "bg-white/[0.05] text-white/40"
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {solWallets.map((w, i) => (
+          </div>
+
+          {/* Accounts Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {(activeTab === "All" || activeTab === "Solana") &&
+              solWallets.map((w, i) => (
                 <WalletCard
-                  key={i}
+                  key={`sol-${i}`}
                   type="Solana"
                   address={w.publicKey}
                   balance={w.balance}
                   usdcBalance={w.usdcBalance}
                   index={i}
-                  onSend={() => { setActiveWallet(w); setIsSendOpen(true); }}
+                  onSend={() => setSendWallet(w)}
+                  onReceive={() => setReceiveWallet({ ...w, type: "Solana", index: i })}
+                  onViewPrivateKey={() => setKeyWallet({ ...w, type: "Solana", index: i })}
                   onDelete={() => setDeleteContext({ type: "Solana", index: i })}
                 />
               ))}
-            </div>
-          </section>
 
-          {/* Ethereum */}
-          <section>
-            <div className="flex items-center gap-6 mb-8">
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.3em] text-white/20 font-medium font-outfit">Network</p>
-                <h2 className="text-2xl font-black text-white font-outfit tracking-tight">Ethereum</h2>
-              </div>
-              <div className="h-px flex-1 bg-white/600" />
-              <span className="text-white/20 font-mono text-xs">{ethWallets.length} accounts</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {ethWallets.map((w, i) => (
+            {(activeTab === "All" || activeTab === "Ethereum") &&
+              ethWallets.map((w, i) => (
                 <WalletCard
-                  key={i}
+                  key={`eth-${i}`}
                   type="Ethereum"
                   address={w.address}
                   balance={w.balance}
                   index={i}
+                  onReceive={() => setReceiveWallet({ ...w, type: "Ethereum", index: i })}
+                  onViewPrivateKey={() => setKeyWallet({ ...w, type: "Ethereum", index: i })}
                   onDelete={() => setDeleteContext({ type: "Ethereum", index: i })}
                 />
               ))}
-            </div>
-          </section>
-
+          </div>
         </main>
       )}
 
-      {activeWallet && (
-        <SendModal
-          isOpen={isSendOpen}
-          onClose={() => setIsSendOpen(false)}
-          wallet={activeWallet}
-        />
-      )}
-
+      {/* Empty State */}
       {!mnemonic && (
-        <div className="mt-20 text-center py-32 relative animate-fade-in">
-          <div className="absolute inset-0 rounded-[64px] bg-linear-to-b from-white/300 to-transparent pointer-events-none" />
-          <div className="absolute inset-0 rounded-[64px] border border-white/600" />
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-px bg-linear-to-r from-transparent via-white/20 to-transparent" />
-          <div className="relative z-10 space-y-5">
-            <p className="text-xs uppercase tracking-[0.3em] text-white/20 font-medium font-outfit">Getting Started</p>
-            <h2 className="text-4xl font-black text-white font-outfit tracking-tight">Your wallet lives here.</h2>
-            <p className="text-gray-500 max-w-sm mx-auto text-base leading-relaxed">
-              Import or generate a seed phrase to load your accounts. Non-custodial - your keys never leave this device.
-            </p>
-            <div className="flex items-center justify-center gap-1.5 pt-2">
-              <span className="w-1 h-1 rounded-full bg-white/20" />
-              <span className="w-1 h-1 rounded-full bg-white/20" />
-              <span className="w-1 h-1 rounded-full bg-white/20" />
-            </div>
+        <div className="mt-12 py-20 text-center animate-enter">
+          <div className="w-12 h-12 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mx-auto mb-4 text-white/50 text-xl font-black">
+            🔒
           </div>
+          <h2 className="text-2xl sm:text-3xl font-black text-white font-outfit tracking-[-0.03em] mb-2">
+            Non-Custodial Multi-Chain Wallet
+          </h2>
+          <p className="text-white/40 max-w-sm mx-auto text-xs sm:text-sm leading-relaxed mb-6">
+            Generate a secure seed phrase to derive Solana and Ethereum accounts locally on your machine.
+          </p>
+          <button
+            onClick={initWallet}
+            className="px-6 py-3 bg-white text-black font-semibold text-xs tracking-wide rounded-xl hover:bg-white/90 transition-all active:scale-[0.97]"
+          >
+            Create Your Wallet Now
+          </button>
         </div>
       )}
 
-      <footer className="mt-32 pt-12 border-t border-white/5 text-center flex flex-col items-center gap-4">
-        <p className="text-white/20 text-sm font-bold tracking-[0.3em] uppercase">Developed by Amit</p>
-        <span className="px-3 py-1 bg-white/5 rounded-full border border-white/10 text-[10px] font-black text-white/20 tracking-widest uppercase">
-          v{pkg.version}
-        </span>
-      </footer>
+      {/* Modals */}
+      {sendWallet && (
+        <SendModal
+          isOpen={!!sendWallet}
+          onClose={() => setSendWallet(null)}
+          wallet={sendWallet}
+        />
+      )}
 
-      {/* Dialogs */}
+      {receiveWallet && (
+        <ReceiveModal
+          isOpen={!!receiveWallet}
+          onClose={() => setReceiveWallet(null)}
+          wallet={receiveWallet}
+        />
+      )}
+
+      {keyWallet && (
+        <PrivateKeyModal
+          isOpen={!!keyWallet}
+          onClose={() => setKeyWallet(null)}
+          wallet={keyWallet}
+        />
+      )}
+
+      {/* Confirmation Dialogs */}
       <Dialog
         isOpen={isEraseDialogOpen}
         onClose={() => setIsEraseDialogOpen(false)}
         onConfirm={handleErase}
-        title="Erase Wallet?"
-        description="This will permanently delete your seed phrase and all accounts from this device. Make sure you have backed up your recovery phrase."
-        confirmText="Yes, Erase Everything"
+        title="Erase wallet data?"
+        description="This will clear your mnemonic phrase and all accounts from this browser session. Make sure your recovery phrase is safely saved."
+        confirmText="Erase Everything"
       />
 
       <Dialog
         isOpen={!!deleteContext}
         onClose={() => setDeleteContext(null)}
-        onConfirm={() => deleteContext && deleteWallet(deleteContext.type, deleteContext.index)}
-        title="Remove Account?"
-        description={`This will remove this ${deleteContext?.type} account from your view. You can always re-derive it using the same index.`}
+        onConfirm={() =>
+          deleteContext && deleteWallet(deleteContext.type, deleteContext.index)
+        }
+        title="Remove account?"
+        description={`This will remove this ${deleteContext?.type} account from view. You can always re-derive it in order.`}
         confirmText="Remove Account"
       />
+
+      {/* Footer */}
+      <footer className="mt-20 pt-6 border-t border-white/[0.06] text-center">
+        <p className="text-white/30 text-[11px] font-medium">
+          Aarav Wallet · <span className="tabular-nums">v{pkg.version}</span>
+        </p>
+      </footer>
     </div>
   );
 }

@@ -1,9 +1,8 @@
 /**
  * Global Toast Notification System.
- * Uses React Context and Portals to display beautiful, non-intrusive notifications.
- * Supports "success", "error", and "info" types with automatic cleanup.
+ * Clean, accessible notifications rendered into document body portal.
  */
-import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 type ToastType = "success" | "error" | "info";
@@ -20,9 +19,6 @@ interface ToastContextType {
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
-/**
- * Hook to access the toast system from any component.
- */
 export const useToast = () => {
   const context = useContext(ToastContext);
   if (!context) throw new Error("useToast must be used within a ToastProvider");
@@ -37,31 +33,54 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToasts((prev) => [...prev, { id, message, type }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
+    }, 3800);
   }, []);
+
+  const dismissToast = (id: number) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
 
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
       {createPortal(
-        <div className="fixed bottom-8 right-8 z-[100] flex flex-col gap-3 pointer-events-none">
+        <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-2.5 pointer-events-none max-w-sm w-full px-4 sm:px-0">
           {toasts.map((toast) => (
             <div
               key={toast.id}
+              onClick={() => dismissToast(toast.id)}
               className={`
-                pointer-events-auto
-                min-w-[320px] max-w-md px-6 py-4 rounded-2xl border backdrop-blur-xl shadow-2xl
-                flex items-center gap-4 animate-fade-in
-                ${toast.type === "success" ? "bg-green-500/10 border-green-500/20 text-green-400" : ""}
-                ${toast.type === "error" ? "bg-red-500/10 border-red-500/20 text-red-400" : ""}
-                ${toast.type === "info" ? "bg-blue-500/10 border-blue-500/20 text-blue-400" : ""}
+                pointer-events-auto cursor-pointer
+                w-full px-4 py-3.5 rounded-xl border
+                flex items-center gap-3 animate-slide-up transition-all duration-200
+                bg-[#0d0d0d] shadow-lg
+                ${
+                  toast.type === "success"
+                    ? "border-emerald-500/20 text-emerald-400"
+                    : toast.type === "error"
+                    ? "border-rose-500/20 text-rose-400"
+                    : "border-sky-500/20 text-sky-400"
+                }
               `}
             >
-              <div className={`w-2 h-2 rounded-full ${
-                toast.type === "success" ? "bg-green-400" :
-                toast.type === "error" ? "bg-red-400" : "bg-blue-400"
-              }`} />
-              <p className="text-sm font-bold tracking-tight">{toast.message}</p>
+              {toast.type === "success" && (
+                <svg className="w-4 h-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+                </svg>
+              )}
+              {toast.type === "error" && (
+                <svg className="w-4 h-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                </svg>
+              )}
+              {toast.type === "info" && (
+                <svg className="w-4 h-4 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clipRule="evenodd" />
+                </svg>
+              )}
+              <p className="text-xs font-medium text-white/90 leading-tight tracking-normal flex-1">
+                {toast.message}
+              </p>
             </div>
           ))}
         </div>,

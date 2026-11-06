@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+.impeccable
+.gemini
+.cursor
+.codex
