@@ -10,6 +10,10 @@ interface WalletProps {
     onDelete?: () => void;
 }
 
+/**
+ * Wallet Account Card component.
+ * Displays address, balances (SOL/ETH/USDC), and key actions (Copy, Send, Remove).
+ */
 export function WalletCard({ address, balance, usdcBalance, type, index, onSend, onDelete }: WalletProps) {
     const [copied, setCopied] = useState(false);
 

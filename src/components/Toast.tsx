@@ -1,3 +1,8 @@
+/**
+ * Global Toast Notification System.
+ * Uses React Context and Portals to display beautiful, non-intrusive notifications.
+ * Supports "success", "error", and "info" types with automatic cleanup.
+ */
 import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
 import { createPortal } from "react-dom";
 
@@ -15,6 +20,9 @@ interface ToastContextType {
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
+/**
+ * Hook to access the toast system from any component.
+ */
 export const useToast = () => {
   const context = useContext(ToastContext);
   if (!context) throw new Error("useToast must be used within a ToastProvider");

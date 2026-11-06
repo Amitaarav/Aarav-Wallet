@@ -12,6 +12,11 @@ interface DialogProps {
   variant?: "danger" | "info";
 }
 
+/**
+ * Reusable Confirmation Dialog component.
+ * Rendered using a React Portal to the document body to avoid parent layout issues (like transforms).
+ * Feature-rich design with glassmorphism and danger/info variants.
+ */
 export function Dialog({
   isOpen,
   onClose,

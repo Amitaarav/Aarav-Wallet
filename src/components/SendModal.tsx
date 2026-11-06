@@ -8,6 +8,11 @@ interface SendModalProps {
     wallet: any;
 }
 
+/**
+ * Modal for sending Solana (SOL) transactions.
+ * Uses React Portals for perfect positioning regardless of parent layout.
+ * Includes address validation (via required input) and loading/status states.
+ */
 export function SendModal({ isOpen, onClose, wallet }: SendModalProps) {
     const [recipient, setRecipient] = useState("");
     const [amount, setAmount] = useState("");

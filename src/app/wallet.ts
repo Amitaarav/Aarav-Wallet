@@ -6,15 +6,19 @@ import { Keypair } from "@solana/web3.js";
 import { HDNodeWallet, Mnemonic } from "ethers";
 
 /**
- * Method to generate 12 words mnemonic from bip39
+ * Generates a random 12-word mnemonic seed phrase using bip39.
+ * @returns A string containing the 12-word mnemonic.
  */
 export function generateMnemonic() {
     return bip39.generateMnemonic();
 }
 
 /**
- * Derive a Solana wallet from a mnemonic and index
- * Path: m/44'/501'/{index}'/0'
+ * Derives a Solana wallet from a given mnemonic and account index.
+ * Uses the standard Solana derivation path: m/44'/501'/{index}'/0'
+ * @param mnemonic The 12-word seed phrase.
+ * @param index The account index (0, 1, 2...).
+ * @returns An object containing the public key, secret key, and the original keypair.
  */
 export function deriveSolanaWallet(mnemonic: string, index: number) {
     const seed = bip39.mnemonicToSeedSync(mnemonic);
@@ -32,8 +36,11 @@ export function deriveSolanaWallet(mnemonic: string, index: number) {
 }
 
 /**
- * Derive an Ethereum wallet from a mnemonic and index
- * Path: m/44'/60'/0'/0/{index}
+ * Derives an Ethereum wallet from a given mnemonic and account index.
+ * Uses the standard Ethereum derivation path: m/44'/60'/0'/0/{index}
+ * @param mnemonic The 12-word seed phrase.
+ * @param index The account index (0, 1, 2...).
+ * @returns An object containing the address and private key.
  */
 export function deriveEthereumWallet(mnemonic: string, index: number) {
     const path = `m/44'/60'/0'/0/${index}`;

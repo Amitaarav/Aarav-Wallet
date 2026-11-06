@@ -8,6 +8,10 @@ import { ToastProvider, useToast } from "./components/Toast";
 import { Dialog } from "./components/Dialog";
 import pkg from "../package.json";
 
+/**
+ * Main App entry point.
+ * Wraps the entire application in a ToastProvider to enable global notifications.
+ */
 export default function App() {
   return (
     <ToastProvider>
@@ -16,14 +20,23 @@ export default function App() {
   );
 }
 
+/**
+ * Core Wallet Application Logic.
+ * Manages mnemonic state, derived wallets for Solana and Ethereum, 
+ * and handles global UI states like refreshing and erase dialogs.
+ */
 function WalletApp() {
   const { showToast } = useToast();
+  
+  // App State
   const [mnemonic, setMnemonic] = useState("");
   const [solWallets, setSolWallets] = useState<Array<any>>([]);
   const [ethWallets, setEthWallets] = useState<Array<any>>([]);
-  const [activeWallet, setActiveWallet] = useState<any>(null);
+  const [activeWallet, setActiveWallet] = useState<any>(null); // For SendModal context
   const [isSendOpen, setIsSendOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // UI Confirmation State
   const [isEraseDialogOpen, setIsEraseDialogOpen] = useState(false);
   const [deleteContext, setDeleteContext] = useState<{ type: "Solana" | "Ethereum", index: number } | null>(null);
 
@@ -63,6 +76,10 @@ function WalletApp() {
     setEthWallets(prev => [...prev, { ...w, balance: 0 }]);
   };
 
+  /**
+   * Refreshes balances for all Solana wallets.
+   * Fetches SOL and optional USDC balances.
+   */
   const refreshBalances = async () => {
     if (!mnemonic) return;
     setIsRefreshing(true);
